@@ -1,6 +1,6 @@
 #include <net/server.h>
 
-NetworkServer_t* listen_clients(const char* ip, const short port)
+NetworkServer_t* listen_clients(const char* ip, const unsigned short port)
 {
     NetworkServer_t* server = calloc(1, sizeof(NetworkServer_t));
     if (!server) return NULL;
@@ -128,4 +128,9 @@ void run_server(NetworkServer_t* server)
             close(client_fd);
         }
     }
+}
+
+int write_server(NetworkClientConnection_t* conn, const char* data, size_t len)
+{
+    return SSL_write(conn->ssl, data, len);
 }

@@ -18,16 +18,14 @@ find_program(RUSTC rustc REQUIRED)
 
 set(RUST_SRC ${CMAKE_SOURCE_DIR}/runtime/main.rs)
 
-add_custom_command(
-    OUTPUT feo_runtime
-    COMMAND ${RUSTC} ${RUST_SRC}
-            -L ${CMAKE_BINARY_DIR}
-            -l static=feo_core
-            -l ssl
-            -l crypto
-            -o feo_runtime
+add_custom_target(runtime ALL
+    COMMAND cargo build --release
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/runtime
     DEPENDS feo_core
-    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
 )
 
-add_custom_target(runtime ALL DEPENDS feo_runtime)
+add_custom_command(TARGET runtime POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy
+        ${CMAKE_SOURCE_DIR}/runtime/target/release/feo_runtime
+        ${CMAKE_BINARY_DIR}/feo_runtime
+)

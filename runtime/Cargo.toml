@@ -1,0 +1,11 @@
+[package]
+name = "feo_runtime"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+libc = "0.2"
+openssl = "0.10"
+
+[build-dependencies]
+cc = "1.0"

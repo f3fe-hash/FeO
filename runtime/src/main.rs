@@ -1,14 +1,26 @@
 // Custom C linkage module
 mod c_link;
-use c_link::{listen_clients, set_server_response, run_server, stop_server, NetworkClientConnection_t};
+use c_link::{
+    listen_clients,
+    set_server_response,
+    run_server,
+    stop_server,
+    write_server,
+    NetworkClientConnection_t
+};
 
 use std::ffi::CString;
 use std::{thread, time::Duration};
 
 // Client handler
-extern "C" fn handle_client(_conn: *mut NetworkClientConnection_t) -> i32
+extern "C" fn handle_client(conn: *mut NetworkClientConnection_t) -> i32
 {
+    let response = CString::new("testing").unwrap();
     println!("Client connected!");
+    unsafe
+    {
+        write_server(conn, response.as_ptr(), response.as_bytes().len());
+    }
     0
 }
 
