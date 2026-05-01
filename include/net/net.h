@@ -18,6 +18,9 @@ extern "C"
 #include <unistd.h>
 #include <signal.h>
 
+#define KEY_PEM  "keys/keys.pem"
+#define CERT_PEM "keys/cert.pem"
+
 void net_init()
 {
     static int initialize_net = 0;

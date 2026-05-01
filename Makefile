@@ -1,11 +1,15 @@
-CMAKE := cmake
-MAKE  := make
+CMAKE   := cmake
+MAKE    := make
+OPENSSL := openssl
 
 BUILD_DIR := build
 MKDIR     := mkdir
 RMDIR     := rm
 
 OUTPUT := feo_runtime
+KEYS   := keys
+KEY    := $(KEYS)/key.pem
+CERT   := $(KEYS)/cert.pem
 
 compile:
 	@clear
@@ -16,3 +20,9 @@ compile:
 
 run:
 	@./$(BUILD_DIR)/$(OUTPUT)
+
+client:
+	@$(OPENSSL) s_client -connect 127.0.0.1:8080
+
+gen_keys:
+	@$(OPENSSL) req -x509 -newkey rsa:4096 -keyout $(KEY) -out $(CERT) -sha256 -days 365 -nodes

@@ -14,14 +14,14 @@ NetworkServer_t* listen_clients(const char* ip, const unsigned short port)
         return NULL;
     }
 
-    if (!SSL_CTX_use_certificate_file(server->ctx, "cert.pem", SSL_FILETYPE_PEM))
+    if (!SSL_CTX_use_certificate_file(server->ctx, CERT_PEM, SSL_FILETYPE_PEM))
     {
         SSL_CTX_free(server->ctx);
         free(server);
         return NULL;
     }
 
-    if (!SSL_CTX_use_PrivateKey_file(server->ctx, "key.pem", SSL_FILETYPE_PEM))
+    if (!SSL_CTX_use_PrivateKey_file(server->ctx, KEY_PEM, SSL_FILETYPE_PEM))
     {
         SSL_CTX_free(server->ctx);
         free(server);
