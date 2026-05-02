@@ -9,6 +9,9 @@ extern "C"
 #include <stdarg.h>
 #include <string.h>
 
+// Errors
+#include <feo_error.h>
+
 // Combine 2 paths: path1 and path2 like this: <path1>/<path2>
 char* join_paths(int count, ...)
 {
