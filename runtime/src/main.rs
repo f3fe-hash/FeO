@@ -5,20 +5,32 @@ use c_link::{
     set_server_response,
     run_server,
     stop_server,
+    read_server,
     write_server,
+    free_buffer,
     NetworkClientConnection_t
 };
 
-use std::ffi::CString;
+use std::ffi::{CString, CStr};
 use std::{thread, time::Duration};
+use std::os::raw::{c_int};
 
 // Client handler
-extern "C" fn handle_client(conn: *mut NetworkClientConnection_t) -> i32
+// Warning: Runs in separate process
+extern "C" fn handle_client(conn: *mut NetworkClientConnection_t) -> c_int
 {
-    let response = CString::new("testing").unwrap();
-    println!("Client connected!");
     unsafe
     {
+        let request_ptr: *mut i8 = read_server(conn);
+
+        if !request_ptr.is_null()
+        {
+            let request = CStr::from_ptr(request_ptr);
+            println!("Client sent: {}", request.to_string_lossy());
+            free_buffer(request_ptr);
+        }
+
+        let response: CString = CString::new("testing").unwrap();
         write_server(conn, response.as_ptr(), response.as_bytes().len());
     }
     0
@@ -26,11 +38,11 @@ extern "C" fn handle_client(conn: *mut NetworkClientConnection_t) -> i32
 
 fn main()
 {
-    let ip = CString::new("127.0.0.1").unwrap();
+    let ip: CString = CString::new("127.0.0.1").unwrap();
 
     unsafe
     {
-        let server = listen_clients(ip.as_ptr(), 8080);
+        let server: *mut c_link::NetworkServer_t = listen_clients(ip.as_ptr(), 8080);
 
         if server.is_null()
         {

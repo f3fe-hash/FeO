@@ -13,16 +13,19 @@ pub struct NetworkClientConnection_t
 use std::os::raw::{c_char, c_ushort, c_int};
 use libc::size_t;
 
-extern "C"
+unsafe extern "C"
 {
-    pub fn listen_clients(ip: *const c_char, port: c_ushort) -> *mut NetworkServer_t;
-    pub fn run_server(server: *mut NetworkServer_t);
-    pub fn stop_server(server: *mut NetworkServer_t);
+    pub unsafe fn listen_clients(ip: *const c_char, port: c_ushort) -> *mut NetworkServer_t;
+    pub unsafe fn run_server(server: *mut NetworkServer_t);
+    pub unsafe fn stop_server(server: *mut NetworkServer_t);
 
-    pub fn write_server(conn: *mut NetworkClientConnection_t, data: *const c_char, len: size_t);
+    pub unsafe fn write_server(conn: *mut NetworkClientConnection_t, data: *const c_char, len: size_t);
+    pub unsafe fn read_server(conn: *mut NetworkClientConnection_t) -> *mut c_char;
 
-    pub fn set_server_response(
+    pub unsafe fn set_server_response(
         server: *mut NetworkServer_t,
         func: extern "C" fn(*mut NetworkClientConnection_t) -> c_int
     );
+
+    pub unsafe fn free_buffer(buffer: *mut c_char);
 }
