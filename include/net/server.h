@@ -29,6 +29,9 @@ void stop_server(NetworkServer_t* server);
 void run_server(NetworkServer_t* server);
 
 int write_server(NetworkClientConnection_t* conn, const char* data, size_t len);
+char* read_server(NetworkClientConnection_t* conn);
+
+void free_buffer(char* buffer);
 
 #ifdef __cplusplus
 }

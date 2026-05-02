@@ -16,6 +16,8 @@ NetworkServer_t* listen_clients(const char* ip, const unsigned short port)
 
     if (!SSL_CTX_use_certificate_file(server->ctx, CERT_PEM, SSL_FILETYPE_PEM))
     {
+        ERR_print_errors_fp(stderr);
+        printf("Failed to load certificate: %s\n", CERT_PEM);
         SSL_CTX_free(server->ctx);
         free(server);
         return NULL;
@@ -23,6 +25,8 @@ NetworkServer_t* listen_clients(const char* ip, const unsigned short port)
 
     if (!SSL_CTX_use_PrivateKey_file(server->ctx, KEY_PEM, SSL_FILETYPE_PEM))
     {
+        ERR_print_errors_fp(stderr);
+        printf("Failed to load private key: %s\n", KEY_PEM);
         SSL_CTX_free(server->ctx);
         free(server);
         return NULL;
@@ -52,6 +56,9 @@ NetworkServer_t* listen_clients(const char* ip, const unsigned short port)
             return NULL;
         }
     }
+
+    int opt = 1;
+    setsockopt(server->serv_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
 
     if (bind(server->serv_fd, (struct sockaddr *)&server->addr, sizeof(server->addr)) < 0)
     {
@@ -133,4 +140,19 @@ void run_server(NetworkServer_t* server)
 int write_server(NetworkClientConnection_t* conn, const char* data, size_t len)
 {
     return SSL_write(conn->ssl, data, len);
+}
+
+char* read_server(NetworkClientConnection_t* conn)
+{
+    char base_buffer[10000];
+    int bytes = SSL_read(conn->ssl, base_buffer, 10000);
+    char* buffer = (char *)calloc(bytes + 1, sizeof(char));
+    memcpy(buffer, base_buffer, bytes);
+    buffer[bytes] = '\0';
+    return buffer;
+}
+
+void free_buffer(char* buffer)
+{
+    free(buffer);
 }
