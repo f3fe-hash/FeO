@@ -39,6 +39,14 @@ To get a local copy:
 ```bash
 git clone https://github.com/f3fe-hash/FeO.git
 cd FeO
+
+# Compile and run it
+make gen_keys
+make compile
+make run
+
+# In another terminal you can connect to it and send stuff
+make client
 ```
 
 Status
