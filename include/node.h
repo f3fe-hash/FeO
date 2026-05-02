@@ -38,8 +38,9 @@ extern Node_t procs[MAX_NUM_PROCS];
 int init_nodes();
 
 Node_t* create_node(const char* name);
-int kill_node(Node_t* node);
+int compile_node(Node_t* node);
 int run_node(Node_t* node);
+int kill_node(Node_t* node);
 int free_node(Node_t* node);
 int restart_node(Node_t* node);
 

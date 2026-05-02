@@ -1,4 +1,4 @@
-<!-- Badges --> <p align="center"> <img src="https://img.shields.io/github/stars/f3fe-hash/editor.md.svg" /> <img src="https://img.shields.io/github/forks/f3fe-hash/editor.md.svg" /> <img src="https://img.shields.io/github/tag/f3fe-hash/editor.md.svg" /> <img src="https://img.shields.io/github/release/f3fe-hash/editor.md.svg" /> <img src="https://img.shields.io/github/issues/f3fe-hash/editor.md.svg" /> <img src="https://img.shields.io/bower/v/editor.md.svg" /> </p>
+<!-- Badges --> <p align="center"> <img src="https://img.shields.io/github/stars/f3fe-hash/FeO.svg" /> <img src="https://img.shields.io/github/forks/f3fe-hash/FeO.svg" /> <img src="https://img.shields.io/github/tag/f3fe-hash/FeO.svg" /> <img src="https://img.shields.io/github/release/f3fe-hash/FeO.svg" /> <img src="https://img.shields.io/github/issues/f3fe-hash/FeO.svg" /> <img src="https://img.shields.io/bower/v/FeO.svg" /> </p>
 FeO
 ---
 

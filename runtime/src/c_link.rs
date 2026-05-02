@@ -70,6 +70,6 @@ unsafe extern "C"
 }
 
 // C macros
-const ERR_OK: i32 = 0;
-const ERR_EXECLP: i32 =  1;
-const ERR_MAX_PROC_REACHED: i32 = 2;
+pub const ERR_OK: i32 = 0;
+pub const ERR_EXECLP: i32 =  1;
+pub const ERR_MAX_PROC_REACHED: i32 = 2;

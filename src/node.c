@@ -14,15 +14,69 @@ Node_t* create_node(const char* name)
     if (!node) return NULL;
 
     node->name_len = strlen(name);
-    node->name = (char *)calloc(node->name_len, sizeof(char));
+    node->name = (char *)calloc(node->name_len + 1, sizeof(char));
     strncpy(node->name, name, node->name_len);
+    node->name[node->name_len] = '\0';
 
     // Create a sub-directory for that specific node.
-    mkdir(join_paths(2, NODE_DIR, name), 0777);
+    char* path = join_paths(2, NODE_DIR, name);
+    mkdir(path, 0777);
+    free(path);
 
     node->pid = 0;
 
     return node;
+}
+
+int compile_node(Node_t* node)
+{
+    char* path = join_paths(2, "/home/feo/nodes", node->name);
+    char* target_dir = join_paths(3, NODE_DIR, node->name, "build");
+
+    pid_t pid = fork();
+    if (pid == 0)
+    {
+        chdir(path);
+
+        execlp(
+            "cargo",
+            "cargo",
+            "build",
+            "--release",
+            "--target-dir",
+            target_dir,
+            NULL
+        );
+
+        _exit(1);
+    }
+
+    free(path);
+    free(target_dir);
+
+    return ERR_OK;
+}
+
+int run_node(Node_t* node)
+{
+    int ret = ERR_OK;
+    int pid = fork();
+    if (pid == 0)
+    {
+        const char* path = join_paths(4, NODE_DIR, node->name, "build", "target", "main");
+        execlp(path, path, NULL);
+        _exit(ERR_EXECLP);
+    }
+
+    // Register the node
+    node->pid = pid;
+    ret = register_process(node);
+
+    // Too many nodes. Free it as the system can't track more
+    if (ret == ERR_MAX_PROC_REACHED)
+        free_node(node);
+
+    return ret;
 }
 
 int kill_node(Node_t* node)
@@ -40,34 +94,14 @@ int kill_node(Node_t* node)
     return ERR_OK;
 }
 
-int run_node(Node_t* node)
-{
-    int ret = ERR_OK;
-    int pid = fork();
-    if (pid == 0)
-    {
-        const char* path = join_paths(4, NODE_DIR, node->name, "build", "main");
-        execlp(path, path, NULL);
-        _exit(ERR_EXECLP);
-    }
-
-    // Register the node
-    node->pid = pid;
-    ret = register_process(node);
-
-    // Too many nodes. Free it as the system can't track more
-    if (ret == ERR_MAX_PROC_REACHED)
-        free_node(node);
-
-    return ret;
-}
-
 int free_node(Node_t* node)
 {
     int ret = ERR_OK;
     ret = kill_node(node);
 
-    rmdir(join_paths(2, NODE_DIR, node->name));
+    char* path = join_paths(2, NODE_DIR, node->name);
+    rmdir(path);
+    free(path);
     free(node->name);
     free(node);
 

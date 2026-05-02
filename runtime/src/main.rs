@@ -53,7 +53,7 @@ fn main()
         println!("Server is running.");
 
         run_server(server);
-        thread::sleep(Duration::from_secs(10));
+        thread::sleep(Duration::from_secs(100));
         stop_server(server);
         println!("Server has been stopped.");
     }
