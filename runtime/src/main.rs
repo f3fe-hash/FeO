@@ -7,32 +7,27 @@ use c_link::{
     stop_server,
     read_server,
     write_server,
-    free_buffer,
     NetworkClientConnection_t
 };
 
-use std::ffi::{CString, CStr};
+use std::ffi::{CString};
 use std::{thread, time::Duration};
 use std::os::raw::{c_int};
 
-// Client handler
+// Client handler for FUP
 // Warning: Runs in separate process
 extern "C" fn handle_client(conn: *mut NetworkClientConnection_t) -> c_int
 {
-    unsafe
+    let request = read_server(conn);
+    // Uploading a node
+    if request == "upload"
     {
-        let request_ptr: *mut i8 = read_server(conn);
-
-        if !request_ptr.is_null()
-        {
-            let request = CStr::from_ptr(request_ptr);
-            println!("Client sent: {}", request.to_string_lossy());
-            free_buffer(request_ptr);
-        }
-
-        let response: CString = CString::new("testing").unwrap();
-        write_server(conn, response.as_ptr(), response.as_bytes().len());
+        write_server(conn, "r".to_string());
+        let response: String = read_server(conn);
+        
     }
+
+    write_server(conn, "testing".to_string());
     0
 }
 
@@ -42,7 +37,7 @@ fn main()
 
     unsafe
     {
-        let server: *mut c_link::NetworkServer_t = listen_clients(ip.as_ptr(), 8080);
+        let server: *mut c_link::NetworkServer_t = listen_clients(ip.as_ptr(), 1234);
 
         if server.is_null()
         {

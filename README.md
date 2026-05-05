@@ -49,6 +49,10 @@ make run
 make client
 ```
 
+FUP
+---
+FUP (FeO Utilities Package) is a separate program used to communicate / interface with the FeO machine. It is primarily used for uploading nodes.
+
 Status
 ---
 This project is a work in progress.

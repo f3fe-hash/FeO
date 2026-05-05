@@ -5,6 +5,7 @@ extern "C"
 #endif
 
 #include <net/net.h>
+#include <math.h>
 
 typedef struct net_cli_conn_t
 {
@@ -28,7 +29,7 @@ NetworkServer_t* listen_clients(const char* ip, const unsigned short port);
 void stop_server(NetworkServer_t* server);
 void run_server(NetworkServer_t* server);
 
-int write_server(NetworkClientConnection_t* conn, const char* data, size_t len);
+void write_server(NetworkClientConnection_t* conn, const char* data, size_t len);
 char* read_server(NetworkClientConnection_t* conn);
 
 void free_buffer(char* buffer);

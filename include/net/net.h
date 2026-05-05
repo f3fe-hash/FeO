@@ -18,6 +18,9 @@ extern "C"
 #include <unistd.h>
 #include <signal.h>
 
+// Custom Utilities
+#include <utils.h>
+
 #define KEY_PEM  "keys/key.pem"
 #define CERT_PEM "keys/cert.pem"
 
