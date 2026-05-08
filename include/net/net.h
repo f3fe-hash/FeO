@@ -14,9 +14,8 @@ extern "C"
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
-// Processes
-#include <unistd.h>
-#include <signal.h>
+// Threads
+#include <pthread.h>
 
 // Custom Utilities
 #include <utils.h>

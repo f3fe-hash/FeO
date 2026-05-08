@@ -12,6 +12,7 @@ extern "C"
 // System errors
 #define ERR_OK 0x00 // No errors
 #define ERR_FAILED_MALLOC 0x01 // Failed to allocate memory. Works for any allocation function, not just malloc.
+#define ERR_FAILED_CREATE_THREAD 0x02 // Failed to create a thread.
 
 // Process errors
 #define ERR_EXECLP 0x10 // Failed using execlp

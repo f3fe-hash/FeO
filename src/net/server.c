@@ -92,11 +92,7 @@ NetworkServer_t* listen_clients(const char* ip, const unsigned short port)
 
 void stop_server(NetworkServer_t* server)
 {
-    if (kill(server->pid, SIGTERM))
-    {
-        __global_err = ERR_FAILED_TERMINATE;
-        perror("Failed to terminate server process");
-    }
+    pthread_join(server->thread, NULL);
 
     SSL_CTX_free(server->ctx);
 }
@@ -106,66 +102,92 @@ void set_server_response(NetworkServer_t* server, int(* func)(NetworkClientConne
     server->response = func;
 }
 
-void run_server(NetworkServer_t* server)
+void* server_thread_func(void* arg)
 {
-    int err_count;
-    server->pid = fork();
-    if (server->pid == 0)
+    NetworkServer_t* server = (NetworkServer_t *)arg;
+    int err_count = 0;
+
+    while (1)
     {
-        while (1)
+        int client_fd = accept(server->serv_fd, NULL, NULL);
+        if (client_fd < 0)
         {
-            int client_fd = accept(server->serv_fd, NULL, NULL);
-            if (client_fd < 0)
-            {
-                __global_err = ERR_FAILED_ACCEPT;
-                err_count ++;
-                continue;
-            }
+            __global_err = ERR_FAILED_ACCEPT;
+            err_count++;
+            continue;
+        }
 
-            SSL* ssl = SSL_new(server->ctx);
-            if (!ssl)
-            {
-                __global_err = ERR_FAILED_CREATE_SSL;
-                err_count ++;
-                close(client_fd);
-                continue;
-            }
-            SSL_set_fd(ssl, client_fd);
+        SSL* ssl = SSL_new(server->ctx);
+        if (!ssl)
+        {
+            __global_err = ERR_FAILED_CREATE_SSL;
+            err_count++;
+            close(client_fd);
+            continue;
+        }
 
-            if (SSL_accept(ssl) <= 0)
-            {
-                __global_err = ERR_FAILED_ACCEPT;
-                err_count ++;
-                goto cleanup;
-            }
+        SSL_set_fd(ssl, client_fd);
 
-            NetworkClientConnection_t* conn = (NetworkClientConnection_t *)calloc(1, sizeof(NetworkClientConnection_t));
-            if (! conn)
-            {
-                __global_err = ERR_FAILED_MALLOC;
-                err_count ++;
-                goto cleanup;
-            }
+        if (SSL_accept(ssl) <= 0)
+        {
+            __global_err = ERR_FAILED_ACCEPT;
+            err_count++;
+            goto cleanup;
+        }
 
-            conn->sockfd = client_fd;
-            conn->ssl = ssl;
+        NetworkClientConnection_t* conn =
+            (NetworkClientConnection_t *)calloc(1, sizeof(NetworkClientConnection_t));
 
-            int ret = server->response(conn);
-            (void) ret;
-            free(conn);
+        if (!conn)
+        {
+            __global_err = ERR_FAILED_MALLOC;
+            err_count++;
+            goto cleanup;
+        }
+
+        conn->sockfd = client_fd;
+        conn->ssl = ssl;
+
+        int ret = server->response(conn);
+        (void)ret;
+
+        free(conn);
 
 cleanup:
-            SSL_shutdown(ssl);
-            SSL_free(ssl);
-            close(client_fd);
+        SSL_shutdown(ssl);
+        SSL_free(ssl);
+        close(client_fd);
 
-            // Errors might just be accidents
-            if (err_count < 5)
-                continue;
-            else // More than 5 errors. Stop the server.
-                break;
-        }
+        // Errors might just be accidents
+        if (err_count >= 5)
+            break;
     }
+
+    return NULL;
+}
+
+void run_server(NetworkServer_t* server)
+{
+    pthread_t thread;
+
+    int ret = pthread_create(
+        &thread,
+        NULL,
+        server_thread_func,
+        server
+    );
+
+    if (ret != 0)
+    {
+        __global_err = ERR_FAILED_CREATE_THREAD;
+        return;
+    }
+
+    // Optional:
+    // Automatically clean up thread resources
+    pthread_detach(thread);
+
+    server->thread = thread;
 }
 
 void write_server(NetworkClientConnection_t* conn, const char* data, size_t len)

@@ -2,19 +2,28 @@
 
 Node_t procs[MAX_NUM_PROCS];
 
-int init_nodes()
+void init_nodes()
 {
     mkdir(NODE_DIR, 0777);
-    return ERR_OK;
 }
 
 Node_t* create_node(const char* name)
 {
     Node_t* node = (Node_t *)calloc(1, sizeof(Node_t));
-    if (!node) return NULL;
+    if (!node)
+    {
+        __global_err = ERR_FAILED_MALLOC;
+        return NULL;
+    }
 
     node->name_len = strlen(name);
     node->name = (char *)calloc(node->name_len + 1, sizeof(char));
+    if (!node->name)
+    {
+        __global_err = ERR_FAILED_MALLOC;
+        return NULL;
+    }
+
     strncpy(node->name, name, node->name_len);
     node->name[node->name_len] = '\0';
 
@@ -28,7 +37,7 @@ Node_t* create_node(const char* name)
     return node;
 }
 
-int compile_node(Node_t* node)
+void compile_node(Node_t* node)
 {
     char* path = join_paths(2, "/home/feo/nodes", node->name);
     char* target_dir = join_paths(3, NODE_DIR, node->name, "build");
@@ -57,7 +66,7 @@ int compile_node(Node_t* node)
     return ERR_OK;
 }
 
-int run_node(Node_t* node)
+void run_node(Node_t* node)
 {
     int ret = ERR_OK;
     int pid = fork();
@@ -79,7 +88,7 @@ int run_node(Node_t* node)
     return ret;
 }
 
-int kill_node(Node_t* node)
+void kill_node(Node_t* node)
 {
     // Kill node (stop it from running)
     kill(node->pid, SIGINT);
@@ -90,30 +99,23 @@ int kill_node(Node_t* node)
         kill(node->pid, SIGKILL);
         return 1;
     }
-
-    return ERR_OK;
 }
 
-int free_node(Node_t* node)
+void free_node(Node_t* node)
 {
-    int ret = ERR_OK;
-    ret = kill_node(node);
+    kill_node(node);
 
     char* path = join_paths(2, NODE_DIR, node->name);
     rmdir(path);
     free(path);
     free(node->name);
     free(node);
-
-    return ret;
 }
 
-int restart_node(Node_t* node)
+void restart_node(Node_t* node)
 {
     kill_node(node);
     run_node(node);
-
-    return ERR_OK;
 }
 
 int* reap_processes()
@@ -122,6 +124,11 @@ int* reap_processes()
     pid_t pid;
 
     int* ret = calloc(MAX_NUM_PROCS, sizeof(int));
+    if (! ret)
+    {
+        __global_err = ERR_FAILED_MALLOC;
+        return NULL;
+    }
 
     while ((pid = waitpid(-1, &status, WNOHANG)) > 0)
     {
@@ -139,7 +146,7 @@ int* reap_processes()
     return ret;
 }
 
-int register_process(Node_t* node)
+void register_process(Node_t* node)
 {
     for (int i = 0; i < MAX_NUM_PROCS; i++)
     {
@@ -151,5 +158,5 @@ int register_process(Node_t* node)
         }
     }
 
-    return ERR_MAX_PROC_REACHED;
+    __global_err = ERR_MAX_PROC_REACHED;
 }

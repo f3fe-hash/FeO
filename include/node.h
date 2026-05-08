@@ -35,17 +35,17 @@ typedef struct feo_node_t
 
 extern Node_t procs[MAX_NUM_PROCS];
 
-int init_nodes();
+void init_nodes();
 
 Node_t* create_node(const char* name);
-int compile_node(Node_t* node);
-int run_node(Node_t* node);
-int kill_node(Node_t* node);
-int free_node(Node_t* node);
-int restart_node(Node_t* node);
+void compile_node(Node_t* node);
+void run_node(Node_t* node);
+void kill_node(Node_t* node);
+void free_node(Node_t* node);
+void restart_node(Node_t* node);
 
 int* reap_processes();
-int register_process(Node_t* node);
+void register_process(Node_t* node);
 
 #ifdef __cplusplus
 }

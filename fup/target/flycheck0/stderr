@@ -1,5 +1,5 @@
-   0.036808679s  INFO prepare_target{force=false package_id=fup v0.1.0 (/home/brian/Documents/Programming/FeO/fup) target="fup"}: cargo::core::compiler::fingerprint: fingerprint error for fup v0.1.0 (/home/brian/Documents/Programming/FeO/fup)/Check { test: false }/TargetInner { name: "fup", doc: true, ..: with_path("/home/brian/Documents/Programming/FeO/fup/src/main.rs", Edition2024) }
-   0.036922023s  INFO prepare_target{force=false package_id=fup v0.1.0 (/home/brian/Documents/Programming/FeO/fup) target="fup"}: cargo::core::compiler::fingerprint:     err: failed to read `/home/brian/Documents/Programming/FeO/fup/target/debug/.fingerprint/fup-6b3838553d6c289d/bin-fup`
+   0.027010524s  INFO prepare_target{force=false package_id=fup v0.1.0 (/home/brian/Documents/Programming/FeO/fup) target="fup"}: cargo::core::compiler::fingerprint: fingerprint error for fup v0.1.0 (/home/brian/Documents/Programming/FeO/fup)/Check { test: false }/TargetInner { name: "fup", doc: true, ..: with_path("/home/brian/Documents/Programming/FeO/fup/src/main.rs", Edition2024) }
+   0.027387608s  INFO prepare_target{force=false package_id=fup v0.1.0 (/home/brian/Documents/Programming/FeO/fup) target="fup"}: cargo::core::compiler::fingerprint:     err: failed to read `/home/brian/Documents/Programming/FeO/fup/target/debug/.fingerprint/fup-6b3838553d6c289d/bin-fup`
 
 Caused by:
     No such file or directory (os error 2)
@@ -43,8 +43,8 @@ Stack backtrace:
   25: __libc_start_main_impl
              at ./csu/../csu/libc-start.c:360:3
   26: <unknown>
-   0.128307745s  INFO prepare_target{force=false package_id=fup v0.1.0 (/home/brian/Documents/Programming/FeO/fup) target="fup"}: cargo::core::compiler::fingerprint: fingerprint error for fup v0.1.0 (/home/brian/Documents/Programming/FeO/fup)/Check { test: true }/TargetInner { name: "fup", doc: true, ..: with_path("/home/brian/Documents/Programming/FeO/fup/src/main.rs", Edition2024) }
-   0.128379300s  INFO prepare_target{force=false package_id=fup v0.1.0 (/home/brian/Documents/Programming/FeO/fup) target="fup"}: cargo::core::compiler::fingerprint:     err: failed to read `/home/brian/Documents/Programming/FeO/fup/target/debug/.fingerprint/fup-27cbd0c7ff5c55ec/test-bin-fup`
+   0.154539883s  INFO prepare_target{force=false package_id=fup v0.1.0 (/home/brian/Documents/Programming/FeO/fup) target="fup"}: cargo::core::compiler::fingerprint: fingerprint error for fup v0.1.0 (/home/brian/Documents/Programming/FeO/fup)/Check { test: true }/TargetInner { name: "fup", doc: true, ..: with_path("/home/brian/Documents/Programming/FeO/fup/src/main.rs", Edition2024) }
+   0.154564801s  INFO prepare_target{force=false package_id=fup v0.1.0 (/home/brian/Documents/Programming/FeO/fup) target="fup"}: cargo::core::compiler::fingerprint:     err: failed to read `/home/brian/Documents/Programming/FeO/fup/target/debug/.fingerprint/fup-27cbd0c7ff5c55ec/test-bin-fup`
 
 Caused by:
     No such file or directory (os error 2)
@@ -89,6 +89,6 @@ Stack backtrace:
              at ./csu/../csu/libc-start.c:360:3
   26: <unknown>
     Checking fup v0.1.0 (/home/brian/Documents/Programming/FeO/fup)
-error: could not compile `fup` (bin "fup") due to 4 previous errors
-warning: build failed, waiting for other jobs to finish...
 error: could not compile `fup` (bin "fup" test) due to 4 previous errors
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `fup` (bin "fup") due to 4 previous errors

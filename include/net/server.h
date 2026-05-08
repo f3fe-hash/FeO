@@ -18,7 +18,7 @@ typedef struct net_server_t
     SSL_CTX* ctx;
     struct sockaddr_in addr;
     int serv_fd;
-    pid_t pid;
+    pthread_t thread;
 
     int (* response)(NetworkClientConnection_t *);
 } NetworkServer_t;
