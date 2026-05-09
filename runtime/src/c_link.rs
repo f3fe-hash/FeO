@@ -28,6 +28,13 @@ pub const ERR_FAILED_BIND: i32 = 0x27; // C failed to bind an address to a socke
 pub const ERR_FAILED_LISTEN: i32 = 0x28; // C failed to start listening on a socket.
 pub const ERR_FAILED_ACCEPT: i32 = 0x29; // C (or OpenSSL) failed to accept a client.
 
+#[derive(Debug)]
+pub struct Error
+{
+    err: i32, // Error instance from `__global_err`
+    string: String,
+}
+
 unsafe extern "C"
 {
     /// Global error code set by the last C operation (thread-local).
@@ -187,37 +194,46 @@ unsafe extern "C"
 /// # Outputs
 /// - Returns non-empty client response string on sucess.
 /// - Returns empty string and prints error on `_read_server` failure.
-pub fn new_server(ip: &str, port: u16) -> Server
+pub fn new_server(ip: &str, port: u16) -> Result<Server, Error>
 {
-    unsafe 
+    unsafe
     {
+        // Reset `__global_err`
+        __global_err = ERR_OK;
+
+        // Convert string to C-style
         let ip_cstr: CString = CString::new(ip).expect("CString::new failed");
         let raw: *mut NetworkServer_t = _listen_clients(ip_cstr.as_ptr(), port);
+
+        // If `raw` is null, an error occured
         if raw.is_null()
         {
             let err: i32 = __global_err; // Preserve `__global_err` state
+            let mut err_str: String = String::new();
 
             // match the error.
             match err
             {
-                ERR_FAILED_MALLOC => eprintln!("listen_clients failed to allocate memory."),
-                ERR_FAILED_CREATE_SSL_CTX => eprintln!("listen_clients failed to create an OpenSSL context."),
-                ERR_NO_CERT_FILE => eprintln!("listen_clients couldn't find a certificate file."),
-                ERR_NO_PRIV_FILE => eprintln!("listen_clients couldn't find a private ket file."),
-                ERR_NO_SOCKET => eprintln!("listen_clients couldn't create a socket."),
-                ERR_FAILED_BIND => eprintln!("listen_clients couldn't bind address to socket"),
-                ERR_FAILED_LISTEN => eprintln!("listen_clients failed to listen for clients"),
+                ERR_FAILED_MALLOC => err_str = String::from("listen_clients failed to allocate memory."),
+                ERR_FAILED_CREATE_SSL_CTX => err_str = String::from("listen_clients failed to create an OpenSSL context."),
+                ERR_NO_CERT_FILE => err_str = String::from("listen_clients couldn't find a certificate file."),
+                ERR_NO_PRIV_FILE => err_str = String::from("listen_clients couldn't find a private key file."),
+                ERR_NO_SOCKET => err_str = String::from("listen_clients couldn't create a socket."),
+                ERR_FAILED_BIND => err_str = String::from("listen_clients couldn't bind address to socket"),
+                ERR_FAILED_LISTEN => err_str = String::from("listen_clients failed to listen for clients"),
 
-                _ => eprintln!("listen_clients had an unknown error"),
+                _ => err_str = String::from("listen_clients had an unknown error"),
             }
             
-            return Server::default();
+            // Return an error struct with an err i32 and an error string
+            return Err(Error {err, string: err_str})
         }
 
-        Server
+        // No issues
+        Ok(Server
         {
             server: raw
-        }
+        })
     }
 }
 
@@ -229,26 +245,39 @@ pub fn new_server(ip: &str, port: u16) -> Server
 /// 
 /// # Outputs
 /// - None
-pub fn run_server(server: &Server)
+pub fn run_server(server: &Server) -> Result<(), Error>
 {
     unsafe
     {
+        // Reset `__global_err`
         __global_err = ERR_OK;
+
         _run_server(server.server);
         thread::sleep(Duration::from_millis(10)); // Wait a few millis for immediate crash.
-        let err = __global_err; // Preserve `__global_err` state
+        let err: i32 = __global_err; // Preserve `__global_err` state
+
+        // CHeck for errors
         if err != ERR_OK
         {
+            let mut err_str: String = String::new();
+
+            // Match the error
             match err
             {
-                ERR_FAILED_ACCEPT => eprintln!("run_server failed to accept a client"),
-                ERR_FAILED_CREATE_SSL => eprintln!("run_server failed to create an ssl"),
-                ERR_FAILED_MALLOC => eprintln!("run_server failed to allocate memory"),
+                ERR_FAILED_ACCEPT => err_str = String::from("run_server failed to accept a client"),
+                ERR_FAILED_CREATE_SSL => err_str = String::from("run_server failed to create an ssl"),
+                ERR_FAILED_MALLOC => err_str = String::from("run_server failed to allocate memory"),
 
-                _ => eprintln!("run_server had an unknown error"),
+                _ => err_str = String::from("run_server had an unknown error"),
             }
+
+            // Return Error value
+            return Err(Error {err, string: err_str});
         }
     }
+
+    // Nothing wrong.
+    Ok(())
 }
 
 pub fn stop_server(server: &Server)
@@ -268,24 +297,29 @@ pub fn stop_server(server: &Server)
 /// # Outputs
 /// - Returns non-empty client response string on sucess.
 /// - Returns empty string and prints error on `_read_server` failure.
-pub fn read_server(conn: &ClientConnection) -> String
+pub fn read_server(conn: &ClientConnection) -> Result<String, Error>
 {
     unsafe 
     {
         let request_ptr: *mut c_char = _read_server(conn.conn);
 
+        // If `request_ptr` is null, an error occured
         if request_ptr.is_null()
         {
             let err: i32 = __global_err; // Preserve `__global_err` state
-            if err == ERR_INVALID_READ
+            let mut err_str: String = String::new();
+
+            // Match the error
+            match err
             {
-                eprintln!("read_server error: Failed to read data from client.");
+                ERR_INVALID_READ => err_str = String::from("read_server error: Failed to read data from client."),
+                ERR_FAILED_MALLOC => err_str = String::from("read_server error: Failed to allocate memory"),
+
+                _ => err_str = String::from("read_server had an unknown error"),
             }
-            else if err == ERR_FAILED_MALLOC
-            {
-                eprintln!("read_server error: Failed to allocate memory");
-            }
-            return String::new();
+
+            // Return the error struct
+            return Err(Error {err, string: err_str});
         }
 
         // Borrow C string (DO NOT take ownership)
@@ -296,7 +330,8 @@ pub fn read_server(conn: &ClientConnection) -> String
         // Free C buffer
         free_buffer(request_ptr);
 
-        result
+        // Nothing went wrong.
+        Ok(result)
     }
 }
 
@@ -310,24 +345,28 @@ pub fn read_server(conn: &ClientConnection) -> String
 /// # Outputs
 /// - No return value.
 /// - Prints error on `_write_server` error.
-pub fn write_server(conn: &ClientConnection, data: String)
+pub fn write_server(conn: &ClientConnection, data: String) -> Result<(), Error>
 {
     unsafe
     {
-        // Convert to CString (ensures null-termination and no interior nulls)
+        // Convert to C style string
         let c_string: CString = CString::new(data).expect("CString::new failed");
-
         let ptr: *const c_char = c_string.as_ptr();
         let len: size_t = c_string.as_bytes().len();
 
         __global_err = ERR_OK; // Reset `__global_err`
         _write_server(conn.conn, ptr, len);
         let err: i32 = __global_err; // Preserve `__global_err` state
+        // Check for errors
         if err == ERR_INVALID_WRITE
         {
-            eprintln!("write_server error: Failed to write data to client (0x{:X})", err);
+            let err_str: String = String::from("write_server failed to write data to client");
+            return Err(Error {err, string: err_str});
         }
     }
+
+    // Nothing wrong.
+    Ok(())
 }
 
 /// Client handler for `callback_trampoline`` method
@@ -394,7 +433,7 @@ pub struct Node_t
 unsafe extern "C"
 {
     /// A list of all currently running FeO processes.
-    pub unsafe static mut procs: [Node_t; MAX_NUM_PROCS];
+    unsafe static mut procs: [Node_t; MAX_NUM_PROCS];
 
     /// C interface for initializing the node API.
     /// 
