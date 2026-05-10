@@ -34,6 +34,14 @@ FeO can be used for:
 
 FeO is currently in early development and may be incomplete or unstable.
 
+Documentation
+---
+FeIO contains a lot of documentation, especially for the Rust part. YOu can access the documentation by going to the `runtime` directory and running this command:
+```bash
+cargo doc --open
+```
+This opens the documentation for all of FeO, for example, the c_link module.
+
 To get a local copy:
 ---
 ```bash
