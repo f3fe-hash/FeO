@@ -21,9 +21,11 @@ fn handle_client(
 ) -> Result<(), Error>
 {
     let request: String =
-        read_server(&conn)?;
+    read_server(&conn)?;
 
-    if request == "upload"
+    println!("REQUEST = {:?}", request);
+
+    if request.trim() == "upload"
     {
         write_server(&conn, "r".to_string())?;
 
