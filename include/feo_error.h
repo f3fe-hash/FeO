@@ -33,6 +33,9 @@ extern "C"
 
 extern __thread int __global_err;
 
+void _set_error(int err);
+int _get_error();
+
 #ifdef __cplusplus
 }
 #endif
