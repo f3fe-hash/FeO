@@ -280,18 +280,10 @@ pub struct Error
 
 unsafe extern "C"
 {
-    /// Thread-local global error code used by the C backend.
-    ///
-    /// # Safety
-    /// - Thread-local (`__thread` in C).
-    /// - Each thread has an independent error state.
-    /// - May be overwritten by any subsequent FFI call.
-    /// - Should be read immediately after a failing call.
-    ///
-    /// # Notes
-    /// - Set only when an error occurs.
-    /// - Undefined after successful calls unless manually reset.
-    pub unsafe static mut __global_err: i32;
+
+    // Setter-getter functions for `__global_err` in C.
+    unsafe fn _get_error() -> c_int;
+    unsafe fn _set_error(err: c_int);
 }
 
 /*
@@ -456,7 +448,7 @@ pub fn new_server(ip: &str, port: u16) -> Result<Server, Error>
 {
     unsafe
     {
-        __global_err = ERR_OK;
+        _set_error(ERR_OK);
 
         let ip_cstr: CString =
             CString::new(ip).expect("CString::new failed");
@@ -466,7 +458,7 @@ pub fn new_server(ip: &str, port: u16) -> Result<Server, Error>
 
         if raw.is_null()
         {
-            let err: i32 = __global_err;
+            let err: i32 = _get_error();
 
             let err_str: String = match err
             {
@@ -550,13 +542,13 @@ pub fn run_server(server: &Server) -> Result<(), Error>
 {
     unsafe
     {
-        __global_err = ERR_OK;
+        _set_error(ERR_OK);
 
         _run_server(server.server);
 
         thread::sleep(Duration::from_millis(10));
 
-        let err: i32 = __global_err;
+        let err: i32 = _get_error();
 
         if err != ERR_OK
         {
@@ -628,14 +620,14 @@ pub fn read_server(
 {
     unsafe
     {
-        __global_err = ERR_OK;
+        _set_error(ERR_OK);
 
         let request_ptr: *mut c_char =
             _read_server(conn.conn);
 
         if request_ptr.is_null()
         {
-            let err: i32 = __global_err;
+            let err: i32 = _get_error();
 
             let err_str: String = match err
             {
@@ -702,11 +694,11 @@ pub fn write_server(
 
         let len: size_t = c_string.as_bytes().len();
 
-        __global_err = ERR_OK;
+        _set_error(ERR_OK);
 
         _write_server(conn.conn, ptr, len);
 
-        let err: i32 = __global_err;
+        let err: i32 = _get_error();
 
         if err == ERR_INVALID_WRITE
         {
@@ -872,7 +864,7 @@ pub fn create_node(name: String) -> Result<Node, Error>
 {
     unsafe
     {
-        __global_err = ERR_OK;
+        _set_error(ERR_OK);
 
         let name: CString =
             CString::new(name).expect("CString::new failed");
@@ -882,7 +874,7 @@ pub fn create_node(name: String) -> Result<Node, Error>
 
         if node.is_null()
         {
-            let err: i32 = __global_err;
+            let err: i32 = _get_error();
 
             if err == ERR_FAILED_MALLOC
             {
@@ -924,11 +916,11 @@ pub fn run_node(node: Node) -> Result<(), Error>
 {
     unsafe
     {
-        __global_err = ERR_OK;
+        _set_error(ERR_OK);
 
         _run_node(node.node);
 
-        let err: i32 = __global_err;
+        let err: i32 = _get_error();
 
         if err != ERR_OK
         {
@@ -981,7 +973,7 @@ pub fn reap_procs() -> Result<Vec<i32>, Error>
 {
     unsafe
     {
-        __global_err = ERR_OK;
+        _set_error(ERR_OK);
 
         let c_arr: *mut i32 = _reap_processes();
 
@@ -991,7 +983,7 @@ pub fn reap_procs() -> Result<Vec<i32>, Error>
             MAX_NUM_PROCS,
         );
 
-        let err: i32 = __global_err;
+        let err: i32 = _get_error();
 
         if err != ERR_OK
         {
