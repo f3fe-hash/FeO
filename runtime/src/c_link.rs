@@ -305,11 +305,21 @@ pub struct NetworkServer_t
 }
 
 /// Rust wrapper around `NetworkServer_t`.
-#[derive(Default)]
 pub struct Server
 {
     /// Raw pointer to the underlying C server structure.
     pub server: *mut NetworkServer_t,
+}
+
+impl Default for Server
+{
+    fn default() -> Self
+    {
+        Self
+        {
+            server: std::ptr::null_mut(),
+        }
+    }
 }
 
 #[repr(C)]
@@ -319,11 +329,21 @@ pub struct NetworkClientConnection_t
 }
 
 /// Rust wrapper around `NetworkClientConnection_t`.
-#[derive(Default)]
 pub struct ClientConnection
 {
     /// Raw pointer to the underlying client connection.
     conn: *mut NetworkClientConnection_t,
+}
+
+impl Default for ClientConnection
+{
+    fn default() -> Self
+    {
+        Self
+        {
+            conn: std::ptr::null_mut(),
+        }
+    }
 }
 
 unsafe extern "C"
