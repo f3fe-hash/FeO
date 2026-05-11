@@ -35,7 +35,7 @@ fn handle_client(
 
 fn main()
 {
-    let server: Server = new_server("127.0.0.1", 1234).expect("");
+    let server: Server = new_server("192.168.1.6", 1234).expect("");
 
     add_client_handle(&server, handle_client);
     println!("Server is running.");
