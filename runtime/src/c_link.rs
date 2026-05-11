@@ -198,6 +198,10 @@
 //! }
 //! ```
 
+// Allow unsused function / vairable warnings throughout the entire file.
+// Cleans up compile log.
+#![allow(unused)]
+
 use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_int, c_ushort};
 use std::{thread, time::Duration};
@@ -263,7 +267,7 @@ pub const ERR_FAILED_LISTEN: i32 = 0x28;
 /// Failed to accept a client connection.
 pub const ERR_FAILED_ACCEPT: i32 = 0x29;
 
-/// Rust-side error structure returned by wrapper functions.
+/// Rust-side error structure.
 #[derive(Debug)]
 pub struct Error
 {
@@ -695,7 +699,7 @@ pub fn write_server(
 /// Global client callback handler.
 ///
 /// Used internally by `callback_trampoline`.
-static mut CLIENT_HANDLER: Option<fn(ClientConnection) -> i32> =
+static mut CLIENT_HANDLER: Option<fn(ClientConnection) -> Result<(), Error>> =
     None;
 
 /// Internal callback trampoline.
@@ -717,7 +721,15 @@ extern "C" fn _callback_trampoline(
 
         match CLIENT_HANDLER
         {
-            Some(func) => func(conn_rs) as c_int,
+            Some(func) =>
+            {
+                match func(conn_rs)
+                {
+                    Ok(()) => 0,
+                    Err(err) => err.err,
+                }
+            }
+
             None => -1,
         }
     }
@@ -729,8 +741,8 @@ extern "C" fn _callback_trampoline(
 /// - `server`: Server instance.
 /// - `func`: Callback invoked for each client connection.
 pub fn add_client_handle(
-    server: &mut Server,
-    func: fn(ClientConnection) -> i32,
+    server: &Server,
+    func: fn(ClientConnection) -> Result<(), Error>,
 )
 {
     unsafe

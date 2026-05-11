@@ -1,12 +1,15 @@
-use std::io::{Read, Write};
-use std::net::TcpStream;
+mod net;
+use net::write_packet;
+
 use std::fs;
+use std::io::Read;
+use std::net::TcpStream;
 use std::path::{Path, PathBuf};
+
 use clap::Parser;
 
-const port: u16 = 1234;
+const PORT: u16 = 1234;
 
-/// Simple program to greet a person
 #[derive(Parser, Debug)]
 struct Args
 {
@@ -17,12 +20,34 @@ struct Args
     node: String,
 }
 
-fn collect_files(base: &Path, current: &Path, files: &mut Vec<(PathBuf, PathBuf)>)
+fn should_skip(path: &Path) -> bool
+{
+    for component in path.components()
+    {
+        if component.as_os_str() == "runtime"
+        {
+            return true;
+        }
+    }
+
+    false
+}
+
+fn collect_files(
+    base: &Path,
+    current: &Path,
+    files: &mut Vec<(PathBuf, PathBuf)>
+)
 {
     for entry in fs::read_dir(current).unwrap()
     {
         let entry = entry.unwrap();
         let path = entry.path();
+
+        if should_skip(&path)
+        {
+            continue;
+        }
 
         if path.is_dir()
         {
@@ -30,66 +55,93 @@ fn collect_files(base: &Path, current: &Path, files: &mut Vec<(PathBuf, PathBuf)
         }
         else
         {
-            let relative = path.strip_prefix(base).unwrap().to_path_buf();
+            let relative: PathBuf =
+                path.strip_prefix(base).unwrap().to_path_buf();
+
             files.push((path, relative));
         }
     }
 }
 
-fn send_file(stream: &mut TcpStream, path: &Path, relative: &Path) -> std::io::Result<()>
+fn send_file(
+    stream: &mut TcpStream,
+    path: &Path,
+    relative: &Path
+) -> std::io::Result<()>
 {
-    let mut file: fs::File = fs::File::open(path)?;
-    let size: u64 = file.metadata()?.len();
+    let data: Vec<u8> = fs::read(path)?;
 
-    // Send header
-    let header: String = format!("FILE {} {}\n", relative.display(), size);
-    stream.write_all(header.as_bytes())?;
+    let mut packet: Vec<u8> = Vec::new();
 
-    // Send file bytes
-    let mut buffer: [u8; 4096] = [0u8; 4096];
-    let mut remaining: u64 = size;
+    packet.extend_from_slice(
+        format!("FILE {}\n", relative.display()).as_bytes()
+    );
 
-    while remaining > 0
-    {
-        let read = file.read(&mut buffer)?;
-        stream.write_all(&buffer[..read])?;
-        remaining -= read as u64;
-    }
+    packet.extend_from_slice(&data);
+
+    write_packet(stream, &packet)?;
 
     Ok(())
 }
 
 fn main() -> std::io::Result<()>
 {
-    // Collect arguments
-    let args = Args::parse();
-    let ip = args.address;
-    let node = args.node;
+    let args: Args = Args::parse();
 
-    // Connect to server
-    let socket = format!("{}:{}", ip, port);
-    let mut stream = TcpStream::connect(socket)?;
+    let socket: String =
+        format!("{}:{}", args.address, PORT);
 
-    let msg = b"upload";
-    stream.write_all(msg)?;
+    let mut stream: TcpStream =
+        TcpStream::connect(socket)?;
 
-    let mut buffer: [u8; 1] = [0; 1];
-    let bytes_read: usize = stream.read(&mut buffer)?;
-    if buffer[0] == b'r'
+    // Request upload mode
+    write_packet(&mut stream, b"upload")?;
+
+    let mut response: [u8; 1] = [0];
+
+    stream.read_exact(&mut response)?;
+
+    if response[0] != b'r'
     {
-        // Start upload
-        stream.write_all(format!("UPLOAD {}\n", node).as_bytes())?;
-
-        let mut files = Vec::new();
-        collect_files(Path::new(&node), Path::new(&node), &mut files);
-
-        for (full, relative) in files {
-            send_file(&mut stream, &full, &relative)?;
-        }
-
-        // Finish
-        stream.write_all(b"END\n")?;
+        panic!("Server rejected upload");
     }
+
+    let node_path: PathBuf = PathBuf::from(&args.node);
+
+    let project_name: String =
+        node_path.file_name()
+            .unwrap()
+            .to_string_lossy()
+            .to_string();
+
+    // Start upload session
+    write_packet(
+        &mut stream, 
+        format!("UPLOAD {}\n", project_name).as_bytes()
+    )?;
+
+    let mut files: Vec<(PathBuf, PathBuf)> = Vec::new();
+
+    collect_files(
+        &node_path,
+        &node_path,
+        &mut files
+    );
+
+    for (full, relative) in files
+    {
+        println!("Uploading {}", relative.display());
+
+        send_file(
+            &mut stream,
+            &full,
+            &relative
+        )?;
+    }
+
+    write_packet(&mut stream, b"END\n")?;
+
+    println!("Upload complete.");
 
     Ok(())
 }

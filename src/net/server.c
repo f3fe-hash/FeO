@@ -197,13 +197,13 @@ void write_server(NetworkClientConnection_t* conn, const char* data, size_t len)
     // the length to get the number of characters the number takes up.
     int header_len = (int)log10(len) + 22;
     char header[header_len];
-    snprintf(header, header_len, "Content-Length: %ul\r\n", len);
+    snprintf(header, header_len, "Content-Length: %zu\r\n", len);
 
     // Combine header with data
     size_t final_len = header_len + len;
     char final_data[final_len + 1];
     memcpy(final_data, header, header_len);
-    memcpy(final_data[header_len], data, len);
+    memcpy(&final_data[header_len], data, len);
     final_data[final_len] = '\0';
 
     // Write it all
@@ -250,7 +250,7 @@ char* read_server(NetworkClientConnection_t* conn)
 
     // Compute and allocate size
     size_t len;
-    sscanf(header, "Content-Length: %ul\r\n", len);
+    sscanf(header, "Content-Length: %zu\r\n", &len);
     char* data = calloc(len, sizeof(char));
     if (!data)
     {
@@ -260,7 +260,7 @@ char* read_server(NetworkClientConnection_t* conn)
 
     // Copy the excess bytes to data. Accidentally read them into header.
     int header_written = total_bytes - pos;
-    memcpy(data, header[pos + reached_end_header], header_written);
+    memcpy(data, &header[pos + reached_end_header], header_written);
 
     // Read the rest of the bytes
     int remaining = len - header_written;
@@ -274,8 +274,11 @@ char* read_server(NetworkClientConnection_t* conn)
             return NULL;
         }
 
+        byte_idx += bytes;
         remaining -= bytes;
     }
+
+    return data;
 }
 
 void free_buffer(char* buffer)

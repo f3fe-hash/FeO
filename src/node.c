@@ -63,12 +63,11 @@ void compile_node(Node_t* node)
     free(path);
     free(target_dir);
 
-    return ERR_OK;
+    __global_err = ERR_OK;
 }
 
 void run_node(Node_t* node)
 {
-    int ret = ERR_OK;
     int pid = fork();
     if (pid == 0)
     {
@@ -77,15 +76,16 @@ void run_node(Node_t* node)
         _exit(ERR_EXECLP);
     }
 
+    // Clear `__global_err` to check fro erros in `register_process`
+    __global_err = ERR_OK;
+
     // Register the node
     node->pid = pid;
-    ret = register_process(node);
+    register_process(node);
 
     // Too many nodes. Free it as the system can't track more
-    if (ret == ERR_MAX_PROC_REACHED)
+    if (__global_err == ERR_MAX_PROC_REACHED)
         free_node(node);
-
-    return ret;
 }
 
 void kill_node(Node_t* node)
@@ -97,7 +97,6 @@ void kill_node(Node_t* node)
     {
         // Process took to long to clean up. Kill it.
         kill(node->pid, SIGKILL);
-        return 1;
     }
 }
 
@@ -154,7 +153,7 @@ void register_process(Node_t* node)
         {
             procs[i].pid = node->pid;
             procs[i].active = 1;
-            return ERR_OK;
+            return;
         }
     }
 
