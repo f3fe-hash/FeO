@@ -369,6 +369,7 @@ unsafe extern "C"
     ///
     /// # Safety
     /// - `ip` must point to a valid null-terminated C string.
+    #[link_name = "listen_clients"]
     unsafe fn _listen_clients(
         ip: *const c_char,
         port: c_ushort,
@@ -383,12 +384,14 @@ unsafe extern "C"
     ///
     /// # Notes
     /// - Runs the server in a separate process.
+    #[link_name = "run_server"]
     unsafe fn _run_server(server: *mut NetworkServer_t);
 
     /// Stops the server.
     ///
     /// # Parameters
     /// - `server`: Pointer to a valid server instance.
+    #[link_name = "stop_server"]
     unsafe fn _stop_server(server: *mut NetworkServer_t);
 
     /// Writes data to a client connection.
@@ -400,6 +403,7 @@ unsafe extern "C"
     ///
     /// # Errors
     /// - `ERR_INVALID_WRITE`
+    #[link_name = "write_server"]
     unsafe fn _write_server(
         conn: *mut NetworkClientConnection_t,
         data: *const c_char,
@@ -415,6 +419,7 @@ unsafe extern "C"
     /// # Returns
     /// - Pointer to a C string on success.
     /// - `NULL` on failure.
+    #[link_name = "read_server"]
     unsafe fn _read_server(
         conn: *mut NetworkClientConnection_t,
     ) -> *mut c_char;
@@ -424,6 +429,7 @@ unsafe extern "C"
     /// # Parameters
     /// - `server`: Server instance.
     /// - `func`: Callback function invoked per client.
+    #[link_name = "set_server_response"]
     unsafe fn _set_server_response(
         server: *mut NetworkServer_t,
         func: extern "C" fn(*mut NetworkClientConnection_t) -> c_int,
@@ -433,6 +439,7 @@ unsafe extern "C"
     ///
     /// # Parameters
     /// - `buffer`: Buffer allocated by the C backend.
+    #[link_name = "free_buffer"]
     unsafe fn _free_buffer(buffer: *mut c_char);
 }
 
@@ -803,6 +810,7 @@ unsafe extern "C"
     unsafe static mut procs: [Node_t; MAX_NUM_PROCS];
 
     /// Initializes the node API.
+    #[link_name = "init_nodes"]
     unsafe fn _init_nodes();
 
     /// Creates a node instance.
@@ -816,23 +824,28 @@ unsafe extern "C"
     /// # Returns
     /// - Pointer to `Node_t` on success.
     /// - `NULL` on failure.
+    #[link_name = "create_node"]
     unsafe fn _create_node(
         name: *const c_char,
     ) -> *mut Node_t;
 
     /// Kills a node process.
+    #[link_name = "kill_node"]
     unsafe fn _kill_node(node: *mut Node_t);
 
     /// Runs a node process.
     ///
     /// # Errors
     /// - `ERR_MAX_PROC_REACHED`
+    #[link_name = "run_node"]
     unsafe fn _run_node(node: *mut Node_t);
 
     /// Frees a node instance.
+    #[link_name = "free_node"]
     unsafe fn _free_node(node: *mut Node_t);
 
     /// Restarts a node process.
+    #[link_name = "restart_node"]
     unsafe fn _restart_node(node: *mut Node_t);
 
     /// Reaps completed processes.
@@ -843,6 +856,7 @@ unsafe extern "C"
     /// # Returns
     /// - Pointer to a PID array on success.
     /// - `NULL` on failure.
+    #[link_name = "reap_processes"]
     unsafe fn _reap_processes() -> *mut c_int;
 }
 
