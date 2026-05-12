@@ -303,6 +303,7 @@ pub struct Server
     pub server: *mut NetworkServer_t,
 }
 
+/// Implement a `Default` trait for `Server`
 impl Default for Server
 {
     fn default() -> Self
@@ -327,6 +328,7 @@ pub struct ClientConnection
     conn: *mut NetworkClientConnection_t,
 }
 
+/// Implement a `Default` trait for `ClientConnection`
 impl Default for ClientConnection
 {
     fn default() -> Self

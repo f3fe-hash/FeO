@@ -182,102 +182,128 @@ void run_server(NetworkServer_t* server)
         __global_err = ERR_FAILED_CREATE_THREAD;
         return;
     }
-
-    // Optional:
-    // Automatically clean up thread resources
-    pthread_detach(thread);
-
     server->thread = thread;
 }
 
 void write_server(NetworkClientConnection_t* conn, const char* data, size_t len)
 {
-    // Create header
-    // Format string is 22 chars. Use the logarithm of
-    // the length to get the number of characters the number takes up.
-    int header_len = (int)log10(len) + 22;
-    char header[header_len];
-    snprintf(header, header_len, "Content-Length: %zu\r\n", len);
-
-    // Combine header with data
-    size_t final_len = header_len + len;
-    char final_data[final_len + 1];
-    memcpy(final_data, header, header_len);
-    memcpy(&final_data[header_len], data, len);
-    final_data[final_len] = '\0';
-
-    // Write it all
-    int remaining = final_len; // # of remaining bytes
-    int n = 1; // Bytes written this write call
-    while ((remaining > 0) && (n > 0))
+    char header[64];
+    int header_len = snprintf(header, sizeof(header), "Content-Length: %zu\r\n", len);
+    if (header_len < 0)
     {
-        n = SSL_write(conn->ssl, final_data, len);
-        if (n < 0)
+        __global_err = ERR_INVALID_WRITE;
+        return;
+    }
+
+    // Send header (handle partial writes)
+    int sent = 0;
+    while (sent < header_len)
+    {
+        int n = SSL_write(conn->ssl, header + sent, header_len - sent);
+        if (n <= 0)
         {
             __global_err = ERR_INVALID_WRITE;
             return;
         }
-        
-        remaining -= n;
+        sent += n;
+    }
+
+    // Send body in chunks to avoid large stack allocations
+    size_t total_sent = 0;
+    while (total_sent < len)
+    {
+        size_t to_write = len - total_sent;
+        if (to_write > 16384)
+            to_write = 16384;
+
+        int n = SSL_write(conn->ssl, data + total_sent, (int)to_write);
+        if (n <= 0)
+        {
+            __global_err = ERR_INVALID_WRITE;
+            return;
+        }
+        total_sent += (size_t)n;
     }
 }
 
 char* read_server(NetworkClientConnection_t* conn)
 {
     char header[10000];
-    int pos = 0;
-    int reached_end_header = 0;
-    int total_bytes = 0;
-    while (! reached_end_header)
+    int total = 0;
+    int header_end = -1; // index of byte just after end of header
+
+    while (header_end < 0)
     {
-        int bytes = SSL_read(conn->ssl, &header[total_bytes], 30);
-        if (bytes < 0)
+        int bytes = SSL_read(conn->ssl, header + total, (int)(sizeof(header) - total));
+        if (bytes <= 0)
         {
             __global_err = ERR_INVALID_READ;
             return NULL;
         }
+        total += bytes;
 
-        total_bytes += bytes;
-        for (int i = 0; i < bytes; i ++)
+        // search for "\r\n\r\n"
+        for (int i = 0; i <= total - 4; ++i)
         {
-            if (header[pos] == '\n')
-                reached_end_header = 2; // Move 2 bytes to data
-            else if (header[pos] == '\r')
-                reached_end_header = 1; // Move 1 byte to data
-            pos ++;
+            if (header[i] == '\r' && header[i + 1] == '\n' && header[i + 2] == '\r' && header[i + 3] == '\n')
+            {
+                header_end = i + 4;
+                break;
+            }
+        }
+
+        if (total == (int)sizeof(header) && header_end < 0)
+        {
+            __global_err = ERR_INVALID_READ;
+            return NULL;
         }
     }
 
-    // Compute and allocate size
-    size_t len;
-    sscanf(header, "Content-Length: %zu\r\n", &len);
-    char* data = calloc(len, sizeof(char));
+    size_t len = 0;
+    char* cl = strstr(header, "Content-Length:");
+    if (cl)
+    {
+        cl += strlen("Content-Length:");
+        while (*cl == ' ' || *cl == '\t') cl ++;
+        sscanf(cl, "%zu", &len);
+    }
+    else
+    {
+        // Fallback: try to sscanf from start
+        sscanf(header, "Content-Length: %zu", &len);
+    }
+
+    char* data = calloc(len + 1, 1);
     if (!data)
     {
         __global_err = ERR_FAILED_MALLOC;
         return NULL;
     }
 
-    // Copy the excess bytes to data. Accidentally read them into header.
-    int header_written = total_bytes - pos;
-    memcpy(data, &header[pos + reached_end_header], header_written);
-
-    // Read the rest of the bytes
-    int remaining = len - header_written;
-    int byte_idx = header_written;
-    while (remaining > 0)
+    int header_remaining = total - header_end;
+    if (header_remaining > 0)
     {
-        int bytes = SSL_read(conn->ssl, &data[byte_idx], 10000);
-        if (bytes < 0)
-        {
-            __global_err = ERR_INVALID_READ;
-            return NULL;
-        }
-
-        byte_idx += bytes;
-        remaining -= bytes;
+        int copy_len = header_remaining;
+        if ((size_t)copy_len > len) copy_len = (int)len;
+        memcpy(data, header + header_end, copy_len);
     }
 
+    size_t received = (header_remaining > 0) ? (size_t)header_remaining : 0;
+    while (received < len)
+    {
+        int toread = (int)(len - received);
+        if (toread > 16384) toread = 16384;
+        int bytes = SSL_read(conn->ssl, data + received, toread);
+        if (bytes <= 0)
+        {
+            __global_err = ERR_INVALID_READ;
+            free(data);
+            return NULL;
+        }
+        received += (size_t)bytes;
+    }
+
+    data[len] = '\0';
     return data;
 }
 

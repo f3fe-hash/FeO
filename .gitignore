@@ -1,4 +1,5 @@
 build
 runtime/target
 fup/target
+test_node/target
 keys

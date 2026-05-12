@@ -6,8 +6,8 @@ pub fn write_packet(
     data: &[u8]
 ) -> std::io::Result<()>
 {
-    let header =
-        format!("Content-Length: {}\r\n", data.len());
+    let header: String =
+        format!("Content-Length: {}\r\n\r\n", data.len());
 
     stream.write_all(header.as_bytes())?;
     stream.write_all(data)?;
