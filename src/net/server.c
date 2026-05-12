@@ -9,6 +9,7 @@ NetworkServer_t* listen_clients(const char* ip, const unsigned short port)
         return NULL;
     }
 
+    server->running = 1;
     net_init();
 
     server->ctx = SSL_CTX_new(TLS_server_method());
@@ -92,6 +93,7 @@ NetworkServer_t* listen_clients(const char* ip, const unsigned short port)
 
 void stop_server(NetworkServer_t* server)
 {
+    server->running = 0;
     pthread_join(server->thread, NULL);
 
     SSL_CTX_free(server->ctx);
@@ -107,7 +109,7 @@ void* server_thread_func(void* arg)
     NetworkServer_t* server = (NetworkServer_t *)arg;
     int err_count = 0;
 
-    while (1)
+    while (server->running)
     {
         int client_fd = accept(server->serv_fd, NULL, NULL);
         if (client_fd < 0)
@@ -188,7 +190,7 @@ void run_server(NetworkServer_t* server)
 void write_server(NetworkClientConnection_t* conn, const char* data, size_t len)
 {
     char header[64];
-    int header_len = snprintf(header, sizeof(header), "Content-Length: %zu\r\n", len);
+    int header_len = snprintf(header, sizeof(header), "Content-Length: %zu\r\n\r\n", len);
     if (header_len < 0)
     {
         __global_err = ERR_INVALID_WRITE;
