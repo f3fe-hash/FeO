@@ -18,6 +18,9 @@ extern "C"
 #define ERR_EXECLP 0x10 // Failed using execlp
 #define ERR_MAX_PROC_REACHED 0x11 // Maximum processs limit reached
 #define ERR_FAILED_TERMINATE 0x12 // Failed to terminate process
+// Local process/fork/compile errors
+#define ERR_FAILED_FORK 0x30 // Failed to fork for a process
+#define ERR_COMPILE_FAILED 0x31 // Child process (compile) failed
 
 // Networking errors
 #define ERR_INVALID_WRITE 0x20 // Failed using SSL_write

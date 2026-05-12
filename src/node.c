@@ -40,7 +40,7 @@ Node_t* create_node(const char* name)
 
 void compile_node(Node_t* node)
 {
-    char* path = join_paths(2, "/home/feo/nodes", node->name);
+    char* path = join_paths(2, NODE_DIR, node->name);
     char* target_dir = join_paths(3, NODE_DIR, node->name, "build");
 
     pid_t pid = fork();
@@ -61,10 +61,48 @@ void compile_node(Node_t* node)
         _exit(1);
     }
 
+    if (pid > 0)
+    {
+        int status = 0;
+        waitpid(pid, &status, 0);
+        if (!WIFEXITED(status) || WEXITSTATUS(status) != 0)
+        {
+            __global_err = ERR_COMPILE_FAILED;
+        }
+        else
+        {
+            __global_err = ERR_OK;
+
+            /* Ensure logs dir and files exist after successful build so
+             * users can inspect node output even if the node isn't started.
+             */
+            char* build_dir_check = join_paths(3, NODE_DIR, node->name, "build");
+            mkdir(build_dir_check, 0777);
+            free(build_dir_check);
+
+            char* logs_dir = join_paths(4, NODE_DIR, node->name, "build", "logs");
+            mkdir(logs_dir, 0777);
+
+            char* stdout_path = join_paths(5, NODE_DIR, node->name, "build", "logs", "stdout.log");
+            char* stderr_path = join_paths(5, NODE_DIR, node->name, "build", "logs", "stderr.log");
+            int fd;
+            fd = open(stdout_path, O_WRONLY | O_CREAT | O_APPEND, 0644);
+            if (fd >= 0) close(fd);
+            fd = open(stderr_path, O_WRONLY | O_CREAT | O_APPEND, 0644);
+            if (fd >= 0) close(fd);
+
+            free(logs_dir);
+            free(stdout_path);
+            free(stderr_path);
+        }
+    }
+    else
+    {
+        __global_err = ERR_FAILED_FORK;
+    }
+
     free(path);
     free(target_dir);
-
-    __global_err = ERR_OK;
 }
 
 void run_node(Node_t* node)
@@ -76,7 +114,11 @@ void run_node(Node_t* node)
         // will be at: <target_dir>/release/<crate_name>
         char* exe_path = join_paths(5, NODE_DIR, node->name, "build", "release", node->name);
 
-        // Prepare logs directory and files: <target_dir>/logs/stdout.log, stderr.log
+        // Ensure build and logs directories exist: <target_dir>/logs/
+        char* build_dir = join_paths(3, NODE_DIR, node->name, "build");
+        mkdir(build_dir, 0777);
+        free(build_dir);
+
         char* logs_dir = join_paths(4, NODE_DIR, node->name, "build", "logs");
         mkdir(logs_dir, 0777);
 
