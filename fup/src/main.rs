@@ -92,14 +92,11 @@ fn main() -> std::io::Result<()>
     // Establish TLS connection to the server
     let mut stream: TlsStream = connect_tls(&socket, &args.address)
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, format!("TLS connect failed: {}", e)))?;
-    println!("Connected to {}", socket);
 
     // Request upload mode
-    println!("Sending upload request");
     write_packet(&mut stream, b"upload")?;
 
     let response = read_packet(&mut stream)?;
-    println!("Received response: {:?}", response);
     if response.len() < 1 || response[0] != b'r' {
         panic!("Server rejected upload");
     }
@@ -113,7 +110,6 @@ fn main() -> std::io::Result<()>
             .to_string();
 
     // Start upload session
-    println!("Sending UPLOAD {}", project_name);
     write_packet(
         &mut stream,
         format!("UPLOAD {}\n", project_name).as_bytes()
@@ -129,14 +125,11 @@ fn main() -> std::io::Result<()>
 
     for (full, relative) in files
     {
-        println!("Uploading {}", relative.display());
-
         send_file(
             &mut stream,
             &full,
             &relative
         )?;
-        println!("Finished {}", relative.display());
     }
 
     write_packet(&mut stream, b"END\n")?;

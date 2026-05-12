@@ -27,13 +27,8 @@ fn handle_client(
 
     if request.trim() == "upload"
     {
-        println!("Sending 'r' to client");
         write_server(&conn, "r".to_string())?;
-        println!("Sent 'r' to client");
-
-        println!("Entering handle_upload");
         handle_upload(&conn)?;
-        println!("handle_upload returned");
     }
 
     Ok(())
