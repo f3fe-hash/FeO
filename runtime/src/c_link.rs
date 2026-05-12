@@ -272,10 +272,10 @@ pub const ERR_FAILED_ACCEPT: i32 = 0x29;
 pub struct Error
 {
     /// Error code from `__global_err`.
-    err: i32,
+    pub err: i32,
 
     /// Human-readable error description.
-    string: String,
+    pub string: String,
 }
 
 unsafe extern "C"
@@ -834,6 +834,10 @@ unsafe extern "C"
     #[link_name = "run_node"]
     unsafe fn _run_node(node: *mut Node_t);
 
+    /// Compiles a node (runs `cargo build --release`).
+    #[link_name = "compile_node"]
+    unsafe fn _compile_node(node: *mut Node_t);
+
     /// Frees a node instance.
     #[link_name = "free_node"]
     unsafe fn _free_node(node: *mut Node_t);
@@ -933,6 +937,42 @@ pub fn run_node(node: Node) -> Result<(), Error>
                     err,
                     string: String::from(
                         "run_node failed to allocate a new process",
+                    ),
+                });
+            }
+        }
+    }
+
+    Ok(())
+}
+
+/// Compiles a node's source using Cargo.
+///
+/// # Parameters
+/// - `node`: Reference to a `Node` created by `create_node`.
+///
+/// # Returns
+/// - `Ok(())` on success.
+/// - `Err(Error)` on failure.
+pub fn compile_node(node: &Node) -> Result<(), Error>
+{
+    unsafe
+    {
+        _set_error(ERR_OK);
+
+        _compile_node(node.node);
+
+        let err: i32 = _get_error();
+
+        if err != ERR_OK
+        {
+            if err == ERR_FAILED_MALLOC
+            {
+                return Err(Error
+                {
+                    err,
+                    string: String::from(
+                        "compile_node failed to allocate memory",
                     ),
                 });
             }

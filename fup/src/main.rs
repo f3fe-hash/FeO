@@ -4,18 +4,37 @@ use net::{write_packet, read_packet, connect_tls, TlsStream};
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use clap::Parser;
+use clap::{Parser, Subcommand};
 
 const PORT: u16 = 1234;
 
 #[derive(Parser, Debug)]
-struct Args
+#[command(author, version, about)]
+struct Cli
 {
-    #[arg(long)]
-    address: String,
+    #[command(subcommand)]
+    command: Commands,
+}
 
-    #[arg(long)]
-    node: String,
+#[derive(Subcommand, Debug)]
+enum Commands {
+    /// Upload a node directory to the server
+    Upload {
+        #[arg(long)]
+        address: String,
+
+        #[arg(long)]
+        node: String,
+    },
+
+    /// Start a node on the server (create/compile/run)
+    Start {
+        #[arg(long)]
+        address: String,
+
+        #[arg(long)]
+        node: String,
+    },
 }
 
 fn should_skip(path: &Path) -> bool
@@ -84,57 +103,66 @@ fn send_file(
 
 fn main() -> std::io::Result<()>
 {
-    let args: Args = Args::parse();
+    let cli = Cli::parse();
 
-    let socket: String =
-        format!("{}:{}", args.address, PORT);
+    match cli.command {
+        Commands::Upload { address, node } => {
+            let socket = format!("{}:{}", address, PORT);
+            let mut stream: TlsStream = connect_tls(&socket, &address)
+                .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, format!("TLS connect failed: {}", e)))?;
 
-    // Establish TLS connection to the server
-    let mut stream: TlsStream = connect_tls(&socket, &args.address)
-        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, format!("TLS connect failed: {}", e)))?;
+            // Request upload mode
+            write_packet(&mut stream, b"upload")?;
 
-    // Request upload mode
-    write_packet(&mut stream, b"upload")?;
+            let response = read_packet(&mut stream)?;
+            if response.len() < 1 || response[0] != b'r' {
+                panic!("Server rejected upload");
+            }
 
-    let response = read_packet(&mut stream)?;
-    if response.len() < 1 || response[0] != b'r' {
-        panic!("Server rejected upload");
+            let node_path: PathBuf = PathBuf::from(&node);
+            let project_name: String = node_path.file_name().unwrap().to_string_lossy().to_string();
+
+            // Start upload session
+            write_packet(&mut stream, format!("UPLOAD {}\n", project_name).as_bytes())?;
+
+            let mut files: Vec<(PathBuf, PathBuf)> = Vec::new();
+
+            collect_files(&node_path, &node_path, &mut files);
+
+            for (full, relative) in files {
+                send_file(&mut stream, &full, &relative)?;
+            }
+
+            write_packet(&mut stream, b"END\n")?;
+
+            println!("Upload complete.");
+        }
+
+        Commands::Start { address, node } => {
+            let socket = format!("{}:{}", address, PORT);
+            let mut stream: TlsStream = connect_tls(&socket, &address)
+                .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, format!("TLS connect failed: {}", e)))?;
+
+            // Request start mode
+            write_packet(&mut stream, b"start")?;
+
+            let response = read_packet(&mut stream)?;
+            if response.len() < 1 || response[0] != b'r' {
+                panic!("Server rejected start request");
+            }
+
+            let node_path: PathBuf = PathBuf::from(&node);
+            let project_name: String = node_path.file_name().unwrap().to_string_lossy().to_string();
+
+            // Send START command
+            write_packet(&mut stream, format!("START {}\n", project_name).as_bytes())?;
+
+            // Read server reply (ok or err ...)
+            let reply = read_packet(&mut stream)?;
+            let reply_str = String::from_utf8_lossy(&reply);
+            println!("Start reply: {}", reply_str);
+        }
     }
-
-    let node_path: PathBuf = PathBuf::from(&args.node);
-
-    let project_name: String =
-        node_path.file_name()
-            .unwrap()
-            .to_string_lossy()
-            .to_string();
-
-    // Start upload session
-    write_packet(
-        &mut stream,
-        format!("UPLOAD {}\n", project_name).as_bytes()
-    )?;
-
-    let mut files: Vec<(PathBuf, PathBuf)> = Vec::new();
-
-    collect_files(
-        &node_path,
-        &node_path,
-        &mut files
-    );
-
-    for (full, relative) in files
-    {
-        send_file(
-            &mut stream,
-            &full,
-            &relative
-        )?;
-    }
-
-    write_packet(&mut stream, b"END\n")?;
-
-    println!("Upload complete.");
 
     Ok(())
 }
