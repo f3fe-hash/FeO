@@ -1,9 +1,7 @@
 mod net;
-use net::write_packet;
+use net::{write_packet, read_packet, connect_tls, TlsStream};
 
 use std::fs;
-use std::io::Read;
-use std::net::TcpStream;
 use std::path::{Path, PathBuf};
 
 use clap::Parser;
@@ -41,8 +39,8 @@ fn collect_files(
 {
     for entry in fs::read_dir(current).unwrap()
     {
-        let entry = entry.unwrap();
-        let path = entry.path();
+        let entry: fs::DirEntry = entry.unwrap();
+        let path: PathBuf = entry.path();
 
         if should_skip(&path)
         {
@@ -64,7 +62,7 @@ fn collect_files(
 }
 
 fn send_file(
-    stream: &mut TcpStream,
+    stream: &mut TlsStream,
     path: &Path,
     relative: &Path
 ) -> std::io::Result<()>
@@ -91,18 +89,18 @@ fn main() -> std::io::Result<()>
     let socket: String =
         format!("{}:{}", args.address, PORT);
 
-    let mut stream: TcpStream =
-        TcpStream::connect(socket)?;
+    // Establish TLS connection to the server
+    let mut stream: TlsStream = connect_tls(&socket, &args.address)
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, format!("TLS connect failed: {}", e)))?;
+    println!("Connected to {}", socket);
 
     // Request upload mode
+    println!("Sending upload request");
     write_packet(&mut stream, b"upload")?;
 
-    let mut response: [u8; 1] = [0];
-
-    stream.read_exact(&mut response)?;
-
-    if response[0] != b'r'
-    {
+    let response = read_packet(&mut stream)?;
+    println!("Received response: {:?}", response);
+    if response.len() < 1 || response[0] != b'r' {
         panic!("Server rejected upload");
     }
 
@@ -115,8 +113,9 @@ fn main() -> std::io::Result<()>
             .to_string();
 
     // Start upload session
+    println!("Sending UPLOAD {}", project_name);
     write_packet(
-        &mut stream, 
+        &mut stream,
         format!("UPLOAD {}\n", project_name).as_bytes()
     )?;
 
@@ -137,6 +136,7 @@ fn main() -> std::io::Result<()>
             &full,
             &relative
         )?;
+        println!("Finished {}", relative.display());
     }
 
     write_packet(&mut stream, b"END\n")?;

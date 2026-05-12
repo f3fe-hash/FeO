@@ -13,8 +13,10 @@ pub fn handle_upload(
     conn: &ClientConnection
 ) -> Result<(), Error>
 {
+    println!("upload handler: waiting for upload string");
     let upload_str: String =
         read_server(conn)?;
+    println!("upload handler: got upload string: {:?}", upload_str);
 
     let parts: Vec<&str> =
         upload_str.splitn(2, ' ').collect();

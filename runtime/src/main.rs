@@ -27,9 +27,13 @@ fn handle_client(
 
     if request.trim() == "upload"
     {
+        println!("Sending 'r' to client");
         write_server(&conn, "r".to_string())?;
+        println!("Sent 'r' to client");
 
+        println!("Entering handle_upload");
         handle_upload(&conn)?;
+        println!("handle_upload returned");
     }
 
     Ok(())
@@ -37,7 +41,7 @@ fn handle_client(
 
 fn main()
 {
-    let server: Server = new_server("192.168.1.6", 1234).expect("");
+    let server: Server = new_server("0.0.0.0", 1234).expect("");
 
     add_client_handle(&server, handle_client);
     println!("Server is running.");
