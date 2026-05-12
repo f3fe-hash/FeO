@@ -1,4 +1,5 @@
 #include <node.h>
+#include <fcntl.h>
 
 Node_t procs[MAX_NUM_PROCS];
 
@@ -71,8 +72,37 @@ void run_node(Node_t* node)
     int pid = fork();
     if (pid == 0)
     {
-        const char* path = join_paths(4, NODE_DIR, node->name, "build", "target", "main");
-        execlp(path, path, NULL);
+        // Executable produced by `cargo build --release --target-dir <target_dir>`
+        // will be at: <target_dir>/release/<crate_name>
+        char* exe_path = join_paths(5, NODE_DIR, node->name, "build", "release", node->name);
+
+        // Prepare logs directory and files: <target_dir>/logs/stdout.log, stderr.log
+        char* logs_dir = join_paths(4, NODE_DIR, node->name, "build", "logs");
+        mkdir(logs_dir, 0777);
+
+        char* stdout_path = join_paths(5, NODE_DIR, node->name, "build", "logs", "stdout.log");
+        char* stderr_path = join_paths(5, NODE_DIR, node->name, "build", "logs", "stderr.log");
+
+        int out_fd = open(stdout_path, O_WRONLY | O_CREAT | O_APPEND, 0644);
+        if (out_fd >= 0) {
+            dup2(out_fd, STDOUT_FILENO);
+            close(out_fd);
+        }
+
+        int err_fd = open(stderr_path, O_WRONLY | O_CREAT | O_APPEND, 0644);
+        if (err_fd >= 0) {
+            dup2(err_fd, STDERR_FILENO);
+            close(err_fd);
+        }
+
+        free(logs_dir);
+        free(stdout_path);
+        free(stderr_path);
+
+        execlp(exe_path, exe_path, NULL);
+        // If execlp returns, log errno to stderr (redirected to stderr.log) then exit
+        perror("execlp failed");
+        free(exe_path);
         _exit(ERR_EXECLP);
     }
 
